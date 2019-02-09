@@ -1,0 +1,235 @@
+---
+layout: default
+title: Pull Spreadsheet
+---
+
+
+<h1>OpenAPI Spec Google Spreadsheet to Jekylll Github YAML</h1>
+<p>This is a basic tool that pulls from a <a href="https://docs.google.com/spreadsheets/d/1dDrCFm8C2jtAkTm4zw86YJeREyCs9Vq49dAQeLiTxtg/pubhtml" target="_blank">Google Spreadsheet OpenAPI Spec template</a>, and publishes into a Github repository as a YAML or JSON to drive some of the Jekyll driven content here on this website, or use in any continous integration, or other stop along the API life cycle.</p>
+<p>For this to save to local repository you have to pass in ?token=[<a href="https://github.com/settings/tokens">personal access token</a>], from a Github account that has access to this repository. If you do not have valid token, the YAML and JSON will not save, but it will still pull from spreadsheet and display here.</p>
+<p>This is just a base component I will use in other micro tools to achieve this basic functionality for allowing YAML driven jekyll sites to be managed by a Google spreadsheet.</p>
+
+<script type="text/javascript">
+
+    // Reset the cookie manually
+    //Cookies.expire('token');
+
+    var $oAuthToken = getUrlVar('token');
+    var $yaml_store = "";
+
+    // When you fork, make sure ad add your org / user and repo name to _config.yml
+    var $org = '{{ site.github_user }}';
+    var $repo = '{{ site.github_repo }}';
+
+    if($oAuthToken !='')
+      {
+
+      // Setting a cookie value
+      Cookies.set('token', $oAuthToken);
+
+      // Set with expiration
+      // Cookies.set('token', $oAuthToken, { expires: '01/01/2017' });
+
+      }
+
+    // Grab the token from cookie
+    $oAuthToken = Cookies.get('token');
+
+    key = "1dDrCFm8C2jtAkTm4zw86YJeREyCs9Vq49dAQeLiTxtg";
+
+    $(document).ready( function() {
+      Tabletop.init( { key: key,
+                       callback: showInfo,
+                       wanted: [ "overview","paths","parameters","responses","definitions","properties"],
+                       debug: true } )
+    })
+
+    function showInfo(data, tabletop) {
+
+      $apidef = {};
+
+      $.each( tabletop.sheets("overview").all(), function(i, api) {
+
+          $swagger = api['swagger'];
+          $info_title = api['info_title'];
+          $info_description = api['info_description'];
+          $info_termsOfService = api['info_termsOfService'];
+          $host = api['host'];
+          $basePath = api['basePath'];
+          $schemes = api['schemes'];
+          $produces = api['produces'];
+          $version = api['version'];
+
+          $apidef['swagger'] = '2.0';
+
+          $i = {};
+          $i['title'] = $info_title;
+          $i['description'] = $info_description;
+          $i['termsOfService'] = $info_termsOfService;
+          $i['version'] = $version;
+
+          $apidef['info'] = $i;
+
+          $apidef['host'] = $host;
+          $apidef['basePath'] = $basePath;
+          $apidef['version'] = $version;
+
+          $apidef['paths'] = new Array();
+          $.each( tabletop.sheets("paths").all(), function(i, path) {
+
+             $name = path['name'];
+             $verb = path['verb'];
+             $summary = path['summary'];
+             $description = path['description'];
+             $parameters = path['parameters'];
+             $operationId = path['operationId'];
+             $responses = path['responses'];
+
+             $d = {};
+             $d['summary'] = $summary;
+             $d['description'] = $description;
+             $d['parameters'] = $parameters;
+             $d['operationId'] = $operationId;
+
+             $d['parameters'] = new Array();
+             $.each( tabletop.sheets("parameters").all(), function(i, response) {
+
+                $parameter_path = response['path'];
+                $parameter_name = response['name'];
+                $parameter_in = response['in'];
+                $parameter_description = response['description'];
+                $parameter_required = response['required'];
+                $parameter_definition = response['definition'];
+                $parameter_type = response['type'];
+                $parameter_format = response['format'];
+                $parameter_allowEmptyValue = response['allowEmptyValue'];
+                $parameter_default = response['default'];
+
+                //console.log($parameter_path + " == " + $name);
+                if($parameter_path == $name && $parameters.includes($parameter_name))
+                  {
+                  $p = {};
+                  $p['name'] = $parameter_name;
+                  $p['in'] = $parameter_in;
+                  $p['description'] = $parameter_description;
+                  $p['required'] = $parameter_required;
+                  $p['ntypeame'] = $parameter_type;
+                  $p['format'] = $parameter_format;
+                  $p['allowEmptyValue'] = $parameter_allowEmptyValue;
+                  $p['default'] = $parameter_default;
+                  $d['parameters'].push($p);
+                  }
+                });
+
+             $d['responses'] = new Array();
+             $.each( tabletop.sheets("responses").all(), function(i, response) {
+
+                $response_path = response['path'];
+                $response_name = response['name'];
+                $response_description = response['description'];
+                $response_definition = response['definition'];
+
+                //console.log($name + " == " + $response_path);
+                if($name == $response_path && $responses.includes($response_name))
+                  {
+                  $s = {};
+                  $s['type'] = "array";
+                  $s['$ref'] = "#/definitions/" + $response_definition;
+
+                  $rd = {};
+                  $rd['description'] = $response_description;
+                  $rd['schema'] = $s;
+
+                  $r = {};
+                  $r[$response_name] = $rd;
+
+                  $d['responses'].push($r);
+                  }
+                });
+
+             $v = {};
+             $v[$verb] = $d;
+
+             $p = {};
+             $p[$name] = $v;
+
+             $apidef['paths'].push($p);
+
+             })
+
+           $apidef['definitions'] = new Array();
+           $.each( tabletop.sheets("definitions").all(), function(i, path) {
+
+              $definition_name = path['name'];
+              $definition_type = path['type'];
+              $definition_properties = path['properties'];
+
+              $d = {};
+              $d['name'] = $definition_name;
+              //$d['type'] = $definition_type;
+              $d['properties'] = new Array();
+              $.each( tabletop.sheets("properties").all(), function(i, path) {
+
+                 $object = path['object'];
+                 $property_name = path['name'];
+                 $property_type = path['type'];
+                 $property_format = path['format'];
+                 $property_description = path['description'];
+
+                 //console.log($definition_name + " == " + $object);
+                 if($definition_name == $object)
+                   {
+                   $p = {};
+                   $p['name'] = $property_name;
+                   $p['type'] = $property_type;
+                   $p['format'] = $property_format;
+                   $p['description'] = $property_description;
+                   $d['properties'].push($p);
+                   }
+                 })
+
+              $apidef['definitions'].push($d);
+
+              })
+
+          $spec_json = JSON.stringify($apidef);
+          $spec_json = JSON.stringify(JSON.parse($spec_json),null,2);
+          document.getElementById('json_source').value = $spec_json;
+
+          // We will save the YAML, maybe JSOn another time.
+          $spec_yaml = jsyaml.dump($apidef);
+          document.getElementById('yaml_source').value = $spec_yaml;
+
+          // Grab the token from cookie
+          $oAuthToken = Cookies.get('token');
+
+          var github = new Github({token: $oAuthToken,auth: "oauth"});
+          var repo = github.getRepo($org,$repo);
+
+          repo.getTree('gh-pages?recursive=true', function(err, tree) {
+
+            $.each(tree, function(treeKey, treeValue) {
+
+              $writepath = '_data/openapi-spec.yaml';
+              $path = treeValue['path'];
+              $sha = treeValue['sha'];
+              //console.log($path + ' == ' + $writepath);
+              if($path==$writepath)
+                {
+                repo.writemanual('gh-pages',$writepath, $spec_yaml, 'Save', $sha, function(err) { });
+                //console.log("writing " + $writepath);
+                //alert("saved " + $writepath);
+                }
+              });
+            });
+
+      })
+
+    }
+
+</script>
+<p><strong>JSON</strong></p>
+<textarea cols="10" rows="5" id="json_source" style="border: 1px solid #000; width: 100%; height: 350px;"></textarea><br />
+<p><strong>YAML</strong></p>
+<textarea cols="10" rows="5" id="yaml_source" style="border: 1px solid #000; width: 100%; height: 350px;"></textarea><br />
+<p>If you have any questions about this work, <a href="https://github.com/api-evangelist-tools/openapi-spec-google-spreadsheet-to-jekyll-github-yaml/issues">submit an issue on the Github repository for the project</a>. or drop me a line at <a href="https://twitter.com/kinlane">@apievangelist</a>.</p>
