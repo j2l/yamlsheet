@@ -1,6 +1,6 @@
 title:        OpenAPI Spec Google Spreadsheet to Jekyll on Github
 description:  This is base for template for managing an OpenAPI Spec in a Google Spreadsheet then publishing to a Jekyll project site running on Github Pages using the Github API.
-url:          https://api-evangelist-tools.github.io/openapi-spec-google-spreadsheet-to-jekyll-github-yaml/
+url:          http://game.edendepot.com/yamlsheet/
 
 version:      1.1.1
 
@@ -17,13 +17,13 @@ exclude: [".rvmrc", ".rbenv-version", "README.md", "Rakefile", "changelog.md",".
 github_user: api-evangelist-tools
 github_repo: spreadsheet-to-yaml-in-jekyll
 
-production_url : https://api-evangelist-tools.github.io/openapi-spec-google-spreadsheet-to-jekyll-github-yaml/
+production_url : http://game.edendepot.com/yamlsheet/
 
 image : http://s3.amazonaws.com/kinlane-productions/api-evangelist/t-shirts/KL_InApiWeTrust-1000.png
 imagesecure : https://s3.amazonaws.com/kinlane-productions/api-evangelist/t-shirts/KL_InApiWeTrust-1000.png
 
 # Footer
 footer_title: API Evangelist
-footer_link: http://apievangelist.com
+footer_link: http://game.edendepot.com/yamlsheet/
 footer_image_source: https://s3.amazonaws.com/kinlane-productions/footer/empowered-by-you-banner.png
 footer_image_width: 60
